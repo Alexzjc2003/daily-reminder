@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -44,18 +45,18 @@ func handleInitCmd(args []string) {
 	subParser := flag.NewFlagSet("init", flag.ExitOnError)
 
 	// isForce := subParser.Bool("f", false, "Force create .daily-reminder/")
-	directory := subParser.String("d", GetDefaultReminderDir(), "Directory under which to create .daily-reminder")
+	directory := subParser.String("d", getDefaultReminderDir(), "Directory under which to create .daily-reminder")
 
 	subParser.Parse(args[1:])
 
-	dr := GetReminder(*directory, true)
+	dr := getReminder(*directory, true)
 	dr.Init(true)
 }
 
 func handleStatusCmd(args []string) {
-	drDir := GetDefaultReminderDir()
+	drDir := getDefaultReminderDir()
 	fmt.Printf("drDir=%s\n", drDir)
-	dr := GetReminder(drDir, false)
+	dr := getReminder(drDir, false)
 	dr.Init(true)
 
 	for _, d := range dr.Dates {
@@ -92,7 +93,7 @@ func handleRememberCmd(args []string) {
 	name := subParser.Arg(0)
 	dateStr := subParser.Arg(1)
 
-	dr := GetReminder(GetDefaultReminderDir(), false)
+	dr := getReminder(getDefaultReminderDir(), false)
 	dr.Init(true)
 
 	date, err := reminder.ParseDate(dateStr)
@@ -130,23 +131,16 @@ func handleQueryCmd(args []string) {
 		return
 	}
 
-	var from *time.Time
-	var to *time.Time
-	if *fromStr != "" {
-		tm, err := time.Parse("2006/01/02", *fromStr)
-		if err != nil {
-			fmt.Printf("Failed to parse from date (%s): %v\n", *fromStr, err)
-			return
-		}
-		from = &tm
+	from, err := parseCmdTime(*fromStr)
+	if err != nil {
+		fmt.Printf("Failed to parse from date (%s): %v\n", *fromStr, err)
+		return
 	}
-	if *toStr != "" {
-		tm, err := time.Parse("2006/01/02", *toStr)
-		if err != nil {
-			fmt.Printf("Failed to parse to date (%s): %v\n", *toStr, err)
-			return
-		}
-		to = &tm
+
+	to, err := parseCmdTime(*toStr)
+	if err != nil {
+		fmt.Printf("Failed to parse to date (%s): %v\n", *toStr, err)
+		return
 	}
 
 	mode := reminder.ModeRegular
@@ -154,7 +148,7 @@ func handleQueryCmd(args []string) {
 		mode = reminder.ModeExpand
 	}
 
-	dr := GetReminder(GetDefaultReminderDir(), false)
+	dr := getReminder(getDefaultReminderDir(), false)
 	dr.Init(true)
 
 	results := dr.Query(reminder.QueryParam{
@@ -164,12 +158,22 @@ func handleQueryCmd(args []string) {
 		Mode:   mode,
 	})
 
+	if len(results) == 0 {
+		fmt.Printf("(Empty)\n")
+		return
+	}
+
+	// sort by time
+	slices.SortFunc(results, func(r1 reminder.QueryResult, r2 reminder.QueryResult) int {
+		return time.Time.Compare(r1.Time, r2.Time)
+	})
+
 	for _, r := range results {
 		fmt.Printf("%s:%s;%s\n", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))
 	}
 }
 
-func GetReminder(path string, isForce bool) reminder.Reminder {
+func getReminder(path string, isForce bool) reminder.Reminder {
 	if !reminder.IsDir(path) {
 		panic(fmt.Errorf("%s: Not a directory\n", path))
 	}
@@ -192,7 +196,7 @@ func GetReminder(path string, isForce bool) reminder.Reminder {
 	}
 }
 
-func GetDefaultReminderDir() string {
+func getDefaultReminderDir() string {
 	// first we check env
 	envReminderPath := os.Getenv("DR_DIR")
 	if envReminderPath != "" {
@@ -202,4 +206,54 @@ func GetDefaultReminderDir() string {
 	// if path in env not available,
 	// we use $HOME as default path
 	return os.Getenv("HOME")
+}
+
+func parseCmdTime(timeStr string) (tm time.Time, err error) {
+	// 1. fancy time
+	if tm, isFancy := parseFancyDate(timeStr); isFancy {
+		return tm, nil
+	}
+
+	// 2. normal date
+	tm, err = time.Parse("2006/01/02", timeStr)
+	return
+}
+
+func parseFancyDate(dateStr string) (time.Time, bool) {
+	ts := strings.ToLower(strings.TrimSpace(dateStr))
+
+	// date literal
+	switch ts {
+	case "today":
+		return reminder.StartOfDay(time.Now()), true
+	case "yesterday":
+		return reminder.StartOfDay(time.Now()).AddDate(0, 0, -1), true
+	case "tomorrow":
+		return reminder.StartOfDay(time.Now()).AddDate(0, 0, 1), true
+	case "":
+		return time.Time{}, true
+	}
+
+	// date arithmetic
+	var delta int
+	if cnt, err := fmt.Sscanf(ts, "%d days ago", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(0, 0, -delta), true
+	}
+	if cnt, err := fmt.Sscanf(ts, "%d days later", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(0, 0, delta), true
+	}
+	if cnt, err := fmt.Sscanf(ts, "%d months ago", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(0, -delta, 0), true
+	}
+	if cnt, err := fmt.Sscanf(ts, "%d months later", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(0, delta, 0), true
+	}
+	if cnt, err := fmt.Sscanf(ts, "%d years ago", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(-delta, 0, 0), true
+	}
+	if cnt, err := fmt.Sscanf(ts, "%d years later", &delta); cnt == 1 && err == nil {
+		return reminder.StartOfDay(time.Now()).AddDate(delta, 0, 0), true
+	}
+
+	return time.Time{}, false
 }

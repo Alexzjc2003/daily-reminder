@@ -2,6 +2,7 @@ package reminder
 
 import (
 	"fmt"
+	"time"
 )
 
 type ReminderDate struct {
@@ -44,4 +45,12 @@ func ParseDate(dateStr string) (date ReminderDate, err error) {
 
 func (d *ReminderDate) ToString() string {
 	return fmt.Sprintf("%04d/%02d/%02d", d.Year, d.Month, d.Day)
+}
+
+func (d *ReminderDate) ToTime() time.Time {
+	if d.Kind() == FULLDATE {
+		return time.Date(int(d.Year), time.Month(d.Month), int(d.Day), 0, 0, 0, 0, time.Local)
+	} else {
+		return time.Time{}
+	}
 }

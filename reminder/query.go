@@ -6,8 +6,8 @@ import (
 )
 
 type QueryParam struct {
-	From   *time.Time
-	To     *time.Time
+	From   time.Time
+	To     time.Time
 	Traits []string
 	Mode   QueryMode
 }
@@ -36,12 +36,12 @@ type ReminderQuery struct {
 }
 
 func (q *ReminderQuery) Build(param QueryParam) {
-	if param.From != nil {
-		q.From(*param.From)
+	if !param.From.IsZero() {
+		q.From(param.From)
 	}
 
-	if param.To != nil {
-		q.To(*param.To)
+	if !param.To.IsZero() {
+		q.To(param.To)
 	}
 
 	if len(param.Traits) > 0 {
@@ -63,7 +63,7 @@ func (q *ReminderQuery) From(tm time.Time) *ReminderQuery {
 		if d.Time.IsZero() {
 			return false
 		}
-		return !d.Time.Before(dayStart(tm))
+		return !d.Time.Before(StartOfDay(tm))
 	})
 	return q
 }
@@ -73,7 +73,7 @@ func (q *ReminderQuery) To(tm time.Time) *ReminderQuery {
 		if d.Time.IsZero() {
 			return false
 		}
-		return !d.Time.After(dayStart(tm))
+		return !d.Time.After(StartOfDay(tm))
 	})
 	return q
 }
@@ -138,10 +138,6 @@ func (q ReminderQuery) Apply(r Reminder) (results []QueryResult) {
 	return
 }
 
-func dayStart(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
-}
-
 func hasAllTraits(recordTraits []string, required []string) bool {
 	if len(required) == 0 {
 		return true
@@ -184,7 +180,7 @@ func expandPartialDate(r ReminderRecord) []QueryRecord {
 func makeQueryRecord(record *ReminderRecord, date ReminderDate) QueryRecord {
 	var t time.Time
 	if date.Kind() == FULLDATE && isValidDate(int(date.Year), time.Month(date.Month), int(date.Day)) {
-		t = time.Date(int(date.Year), time.Month(date.Month), int(date.Day), 0, 0, 0, 0, time.Local)
+		t = date.ToTime()
 	}
 	return QueryRecord{
 		Record: record,

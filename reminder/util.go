@@ -1,6 +1,9 @@
 package reminder
 
-import "os"
+import (
+	"os"
+	"time"
+)
 
 func IsExist(path string) bool {
 	_, err := os.Stat(path)
@@ -21,4 +24,8 @@ func IsFile(path string) bool {
 	} else {
 		return fileinfo.Mode().IsRegular()
 	}
+}
+
+func StartOfDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
