@@ -9,7 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"./reminder"
+	"github.com/Alexzjc2003/daily-reminder/lang"
+	"github.com/Alexzjc2003/daily-reminder/reminder"
 )
 
 func main() {
@@ -31,6 +32,8 @@ func main() {
 		handleRememberCmd(os.Args[1:])
 	case "query":
 		handleQueryCmd(os.Args[1:])
+	case "run":
+		handleRunCmd(os.Args[1:])
 	default:
 		handleHelpCmd(os.Args[1:])
 	}
@@ -38,7 +41,14 @@ func main() {
 }
 
 func handleHelpCmd(args []string) {
-	fmt.Printf("Help message for dr\n")
+	fmt.Printf("Usage: dr <cmd> [args]\n")
+	fmt.Printf("cmd:\n")
+	fmt.Printf("	help       - print this message\n")
+	fmt.Printf("	init       - init dr database, see dr init -h\n")
+	fmt.Printf("	status     - check dr status\n")
+	fmt.Printf("	remember   - remember a new record, see dr remember -q\n")
+	fmt.Printf("    query      - query for records, see dr query -h\n")
+	fmt.Printf("	run <file> - run a dr-script")
 }
 
 func handleInitCmd(args []string) {
@@ -173,6 +183,20 @@ func handleQueryCmd(args []string) {
 	}
 }
 
+func handleRunCmd(args []string) {
+	if len(args) < 2 {
+		fmt.Printf("Usage: dr run <file>\n")
+		return
+	}
+
+	filename := args[1]
+
+	lang.InitRuntime()
+	if err := lang.RunFile(getReminder(getDefaultReminderDir(), false), filename); err != nil {
+		fmt.Printf("Error running %v: %v\n", filename, err)
+	}
+}
+
 func getReminder(path string, isForce bool) reminder.Reminder {
 	if !reminder.IsDir(path) {
 		panic(fmt.Errorf("%s: Not a directory\n", path))
@@ -210,50 +234,11 @@ func getDefaultReminderDir() string {
 
 func parseCmdTime(timeStr string) (tm time.Time, err error) {
 	// 1. fancy time
-	if tm, isFancy := parseFancyDate(timeStr); isFancy {
-		return tm, nil
+	if date, isFancy := reminder.ParseFancyDate(timeStr); isFancy {
+		return date.ToTime(), nil
 	}
 
 	// 2. normal date
 	tm, err = time.Parse("2006/01/02", timeStr)
 	return
-}
-
-func parseFancyDate(dateStr string) (time.Time, bool) {
-	ts := strings.ToLower(strings.TrimSpace(dateStr))
-
-	// date literal
-	switch ts {
-	case "today":
-		return reminder.StartOfDay(time.Now()), true
-	case "yesterday":
-		return reminder.StartOfDay(time.Now()).AddDate(0, 0, -1), true
-	case "tomorrow":
-		return reminder.StartOfDay(time.Now()).AddDate(0, 0, 1), true
-	case "":
-		return time.Time{}, true
-	}
-
-	// date arithmetic
-	var delta int
-	if cnt, err := fmt.Sscanf(ts, "%d days ago", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(0, 0, -delta), true
-	}
-	if cnt, err := fmt.Sscanf(ts, "%d days later", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(0, 0, delta), true
-	}
-	if cnt, err := fmt.Sscanf(ts, "%d months ago", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(0, -delta, 0), true
-	}
-	if cnt, err := fmt.Sscanf(ts, "%d months later", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(0, delta, 0), true
-	}
-	if cnt, err := fmt.Sscanf(ts, "%d years ago", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(-delta, 0, 0), true
-	}
-	if cnt, err := fmt.Sscanf(ts, "%d years later", &delta); cnt == 1 && err == nil {
-		return reminder.StartOfDay(time.Now()).AddDate(delta, 0, 0), true
-	}
-
-	return time.Time{}, false
 }
