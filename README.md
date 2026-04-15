@@ -1,5 +1,7 @@
 # daily-reminder
 
+This project is still WIP, and dr usage may differ at any time. Please check for updates to see what's new.
+
 ## Introduction
 
 Daily-reminder, or dr, is a command-line reminder designed to use with .bashrc.
