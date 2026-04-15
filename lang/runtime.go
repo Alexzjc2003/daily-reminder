@@ -53,7 +53,7 @@ func InitRuntime() {
 		panic(fmt.Errorf("%s: Does not exist\n", drPath))
 	}
 
-	r := reminder.Reminder{
+	r = reminder.Reminder{
 		Path: drPath,
 	}
 
@@ -186,7 +186,7 @@ func queryRunner(args []string) (Variable, error) {
 	res := VariableList{}
 	for _, r := range results {
 		// fmt.Printf("%s:%s;%s\n", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))
-		res.Data = append(res.Data, VariableString{Data: fmt.Sprintf("%s:%s;%s\n", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))})
+		res.Data = append(res.Data, VariableString{Data: fmt.Sprintf("%s:%s;%s", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))})
 	}
 
 	return res, nil
