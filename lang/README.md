@@ -56,13 +56,28 @@ Anything not specifically marked is treated as `String`.
 
 > If all parsing except string failed(without any prefix, prefixes force a specific parsing), a string parsing will always be a fallback.
 
+##### Object
+
+`Object` is basically a `map[string]Variable`. To fetch its fields, use dot(`.`), like `$object.value`. 
+
 #### setting and getting a variable
 
 ```
-var recent;
-set recent query -x --from="today" --to="3 days later";
-print recent;
+set $recent query -x --from="today" --to="3 days later";
+print $recent;
 ```
+
+#### variable table
+
+A variable table is a map that dr-lang holds at runtime. It is defined as follow:
+
+```go
+type VariableTable map[string]Variable
+
+var vt VariableTable
+```
+
+
 
 ### expression
 

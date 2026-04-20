@@ -192,7 +192,7 @@ func handleRunCmd(args []string) {
 	filename := args[1]
 
 	lang.InitRuntime()
-	if err := lang.RunFile(getReminder(getDefaultReminderDir(), false), filename); err != nil {
+	if err := lang.RunFile(filename); err != nil {
 		fmt.Printf("Error running %v: %v\n", filename, err)
 	}
 }

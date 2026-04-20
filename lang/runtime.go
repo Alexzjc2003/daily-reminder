@@ -14,7 +14,7 @@ import (
 
 var r reminder.Reminder
 
-func GetReminder() reminder.Reminder { return r }
+func GetReminder() *reminder.Reminder { return &r }
 
 type VariableTable map[string]Variable
 
@@ -185,9 +185,14 @@ func queryRunner(args []string) (Variable, error) {
 
 	res := VariableList{}
 	for _, r := range results {
-		// fmt.Printf("%s:%s;%s\n", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))
-		res.Data = append(res.Data, VariableString{Data: fmt.Sprintf("%s:%s;%s", r.Date.ToString(), r.Record.Name, strings.Join(r.Record.Traits, ","))})
-	}
+		vo := VariableObject{Data: map[string]Variable{}}
+		vo.FromMap(map[string]any{
+			"date":   r.Date.ToString(),
+			"traits": r.Record.Traits,
+			"name":   r.Record.Name,
+		})
 
+		res.Data = append(res.Data, vo)
+	}
 	return res, nil
 }
