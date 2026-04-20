@@ -41,7 +41,7 @@ func RunFile(filename string) error {
 			return err
 		}
 
-		if err := ParseCmd(args); err != nil {
+		if err := ParseCmd(args, false); err != nil {
 			return err
 		}
 	}
@@ -49,25 +49,34 @@ func RunFile(filename string) error {
 	return nil
 }
 
-func ParseCmd(args []string) (err error) {
-	if len(args) < 1 {
-		return fmt.Errorf("empty command")
+func ParseCmd(args []string, splitSub bool) error {
+	// find do
+	doArgIndex := slices.Index(args, "do")
+	if doArgIndex < 0 || !splitSub {
+		if len(args) < 1 {
+			return fmt.Errorf("empty command")
+		}
+
+		cmd := args[0]
+		switch cmd {
+		case "set":
+			return ParseSetCmd(args)
+		case "print":
+			return ParsePrintCmd(args)
+		case "foreach":
+			return ParseForeachCmd(args)
+		default:
+			return fmt.Errorf("unknown command: %v", cmd)
+		}
+	}
+	if err := ParseCmd(args[:doArgIndex], false); err != nil {
+		return err
+	}
+	if err := ParseCmd(args[doArgIndex+1:], splitSub); err != nil {
+		return err
 	}
 
-	cmd := args[0]
-
-	switch cmd {
-	case "set":
-		err = ParseSetCmd(args)
-	case "print":
-		err = ParsePrintCmd(args)
-	case "foreach":
-		err = ParseForeachCmd(args)
-	default:
-		return fmt.Errorf("unknown command: %v", cmd)
-	}
-
-	return
+	return nil
 }
 
 func ParseSetCmd(args []string) error {
@@ -128,7 +137,7 @@ func ParseForeachCmd(args []string) error {
 			vt["%index"] = VariableNumber{Data: int64(i)}
 			vt["%value"] = e
 			// start looping
-			if err := ParseCmd(args[doArgIndex+1:]); err != nil {
+			if err := ParseCmd(args[doArgIndex+1:], true); err != nil {
 				return err
 			}
 		}
@@ -141,7 +150,7 @@ func ParseForeachCmd(args []string) error {
 			vt["%key"] = VariableString{Data: k}
 			vt["%value"] = v
 			// start looping
-			if err := ParseCmd(args[doArgIndex+1:]); err != nil {
+			if err := ParseCmd(args[doArgIndex+1:], true); err != nil {
 				return err
 			}
 		}
