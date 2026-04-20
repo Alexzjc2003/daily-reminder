@@ -156,7 +156,7 @@ func ParseForeachCmd(args []string) error {
 
 func ParseExpr(args []string) (Variable, error) {
 	if len(args) < 1 {
-		return VariableString{}, fmt.Errorf("empty expression")
+		return VariableEmpty{}, fmt.Errorf("empty expression")
 	}
 
 	// try parse as a number
@@ -169,6 +169,43 @@ func ParseExpr(args []string) (Variable, error) {
 		if data, err := reminder.ParseDate(date); err == nil {
 			return VariableDate{Data: data}, nil
 		}
+	}
+
+	// try parse as a list
+	// Note we are expecting a little bit too much on input
+	if args[0] == "[" && args[len(args)-1] == "]" {
+		// expect commas are single tokens
+		vl := VariableList{Data: []Variable{}}
+		argsTemp := []string{}
+		for _, arg := range args[1 : len(args)-1] {
+			if arg == "," {
+				if len(argsTemp) == 0 {
+					vl.Data = append(vl.Data, VariableEmpty{})
+				} else {
+					if v, err := ParseExpr(argsTemp); err != nil {
+						return VariableEmpty{}, nil
+					} else {
+						vl.Data = append(vl.Data, v)
+					}
+				}
+
+				argsTemp = []string{}
+			} else {
+				argsTemp = append(argsTemp, arg)
+			}
+		}
+
+		if len(argsTemp) == 0 {
+			vl.Data = append(vl.Data, VariableEmpty{})
+		} else {
+			if v, err := ParseExpr(argsTemp); err != nil {
+				return VariableEmpty{}, nil
+			} else {
+				vl.Data = append(vl.Data, v)
+			}
+		}
+
+		return vl, nil
 	}
 
 	// try parse as a special variable
@@ -240,8 +277,12 @@ func ParseFieldAccess(segs []string) (Variable, error) {
 			if index, err := strconv.ParseInt(seg, 10, 64); err != nil {
 				return VariableEmpty{}, fmt.Errorf("expect index for list(%s), got %s", strings.Join(segs[:idx], "."), seg)
 			} else {
-				va = vl.Data[index]
-				continue
+				if int(index) < len(vl.Data) {
+					va = vl.Data[int(index)]
+					continue
+				} else {
+					return VariableEmpty{}, fmt.Errorf("index out of range for %s(%d/%d)", strings.Join(segs[:idx], "."), int(index), len(vl.Data))
+				}
 			}
 		}
 
