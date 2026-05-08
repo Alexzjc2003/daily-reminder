@@ -40,15 +40,15 @@ func main() {
 
 }
 
-func handleHelpCmd(args []string) {
+func handleHelpCmd([]string) {
 	fmt.Printf("Usage: dr <cmd> [args]\n")
 	fmt.Printf("cmd:\n")
-	fmt.Printf("	help       - print this message\n")
-	fmt.Printf("	init       - init dr database, see dr init -h\n")
-	fmt.Printf("	status     - check dr status\n")
-	fmt.Printf("	remember   - remember a new record, see dr remember -q\n")
+	fmt.Printf("    help       - print this message\n")
+	fmt.Printf("    init       - init dr database, see dr init -h\n")
+	fmt.Printf("    status     - check dr status\n")
+	fmt.Printf("    remember   - remember a new record, see dr remember -h\n")
 	fmt.Printf("    query      - query for records, see dr query -h\n")
-	fmt.Printf("	run <file> - run a dr-script")
+	fmt.Printf("    run <file> - run a dr-script\n")
 }
 
 func handleInitCmd(args []string) {
@@ -63,7 +63,7 @@ func handleInitCmd(args []string) {
 	dr.Init(true)
 }
 
-func handleStatusCmd(args []string) {
+func handleStatusCmd([]string) {
 	drDir := getDefaultReminderDir()
 	fmt.Printf("drDir=%s\n", drDir)
 	dr := getReminder(drDir, false)
